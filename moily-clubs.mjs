@@ -1,7 +1,7 @@
 import {scheduleCard,goalCard} from './moily-components.mjs';
 const el=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n;};
-export function renderClubs(data,templates,state,redraw,create){
- if(state.selectedId&&!state.creating)return renderDetail(data,templates,state,redraw);
+export function renderClubs(data,templates,state,redraw,create,update){
+ if(state.selectedId&&!state.creating)return renderDetail(data,templates,state,redraw,update);
  if(state.creating)return renderCreate(templates,state,redraw,create);
  const root=el('section','moily-clubs-view');root.append(el('h2','moily-heading','내 동호회'));
  const filters=el('div','clubs-filters');filters.setAttribute('role','group');filters.setAttribute('aria-label','동호회 필터');
@@ -38,7 +38,7 @@ function renderCreate(templates,state,redraw,create){
  root.append(form);return root;
 }
 
-function renderDetail(data,templates,state,redraw){
+function renderDetail(data,templates,state,redraw,update){
  const root=el('section','moily-clubs-view');
  const back=el('a','moily-button moily-button--secondary','‹ 동호회 목록');back.href='#clubs';root.append(back);
  if(data.errors?.clubs||!Array.isArray(data.clubs)){root.append(el('p','moily-panel',data.errors?.clubs?'동호회 조회 실패':'동호회 확인 중…'));return root;}
@@ -47,6 +47,10 @@ function renderDetail(data,templates,state,redraw){
  const hero=el('article','moily-panel moily-stack');hero.style.borderInlineStart='6px solid '+(/^#[0-9a-f]{6}$/i.test(c.color)?c.color:'#2F6B4F');
  const icons={mountain:'⛰️',footprints:'👟',bike:'🚲','circle-dot':'🎾',shapes:'◆'};
  hero.append(el('p','moily-caption',(templates[c.category]?.label||'기타')+' 동호회'),el('h2','moily-heading',(icons[c.icon]||'◆')+' '+c.name),el('p','',c.description||'우리의 모임 기록'));root.append(hero);
+ if(c.status==='active'){
+ const edit=el('button','moily-button moily-button--secondary','동호회 정보 수정');edit.type='button';edit.onclick=()=>{state.edit={id:c.id,name:c.name,description:c.description||'',color:c.color,icon:c.icon,version:c.version};state.editError='';redraw();};root.append(edit);
+ if(state.edit?.id===c.id){root.append(renderEdit(state,templates,redraw,update));return root;}
+ }
  const tabs=el('div','clubs-filters');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','동호회 상세 메뉴');
  const active=state.detailTab||'home';
  for(const [key,label] of [['home','홈'],['schedules','일정'],['activities','활동 기록'],['goals','목표']]){const b=el('button','moily-button',label);b.type='button';b.setAttribute('aria-pressed',String(active===key));b.onclick=()=>{state.detailTab=key;redraw();};tabs.append(b);}root.append(tabs);
@@ -62,4 +66,17 @@ function renderDetail(data,templates,state,redraw){
  if(active==='home'||active==='goals')section('goals','목표','등록된 목표가 없어요.',goal);
  if(c.status==='active'&&(active==='home'||active==='schedules')){const add=el('button','moily-button','+ 일정 등록 (준비 중)');add.disabled=true;root.append(add);}
  return root;
+}
+
+function renderEdit(state,templates,redraw,update){
+ const draft=state.edit,form=el('form','moily-panel moily-stack'),fields=el('fieldset','clubs-create-fields');
+ function field(label,key,tag='input',type='text'){const l=el('label','clubs-field'),n=el(tag,'moily-input');if(tag==='input')n.type=type;n.value=draft[key];n.oninput=()=>{draft[key]=n.value;};l.append(el('span','moily-caption',label),n);fields.append(l);return n;}
+ const name=field('동호회 이름 (필수)','name');name.required=true;name.maxLength=60;
+ field('소개','description','textarea').maxLength=300;
+ field('대표 색상','color','input','color');
+ const l=el('label','clubs-field'),select=el('select','moily-input');for(const t of Object.values(templates)){const o=el('option','',t.label);o.value=t.icon;select.append(o);}select.value=draft.icon;select.onchange=()=>{draft.icon=select.value;};l.append(el('span','moily-caption','아이콘'),select);fields.append(l);
+ const save=el('button','moily-button',state.editBusy?'저장 중…':'저장'),cancel=el('button','moily-button moily-button--secondary','취소');save.type='submit';cancel.type='button';cancel.onclick=()=>{state.edit=null;state.editError='';redraw();};fields.append(save,cancel);fields.disabled=!!state.editBusy;form.append(fields);
+ const msg=el('p','moily-caption',state.editError||'');msg.setAttribute('role','status');form.append(msg);
+ form.onsubmit=async e=>{e.preventDefault();if(state.editBusy)return;if(!draft.name.trim()){msg.textContent='동호회 이름을 입력해 주세요.';return;}state.editBusy=true;state.editError='';redraw();try{await update(draft.id,{...draft});state.edit=null;}catch{state.editError='저장 실패. 연결 상태 또는 다른 기기의 변경 사항을 확인해 주세요.';}finally{state.editBusy=false;redraw();}};
+ return form;
 }
