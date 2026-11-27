@@ -19,7 +19,7 @@ export function renderHome(data,templates,layout,calendarState={}){
  else{const others=el('div','home-other-clubs');summary.clubs.forEach((c,i)=>{
  const count=summary.upcoming.filter(s=>s.clubId===c.id).length;
  const card=clubCard({type:i===0?(c.isPrimary?'대표 동호회':'내 동호회'):(Object.hasOwn(templates,c.category)?templates[c.category].label:'기타'),title:c.name,summary:(ready&&!(data.errors?.clubs||data.errors?.schedules)?'예정 일정 '+count+'개':'일정 확인 중…')+' · 바로가기'});
- const link=el('a','home-club-link');link.href='#clubs';link.setAttribute('aria-label',c.name+' · 동호회 메뉴');link.append(card);
+ const link=el('a','home-club-link');link.href='#clubs/'+encodeURIComponent(c.id);link.setAttribute('aria-label',c.name+' · 상세 보기');link.append(card);
  if(i===0){card.classList.add('home-featured');section.append(link);}else others.append(link);
  });if(others.childElementCount)section.append(others);}
  const cards={hero,clubs:section,calendar:homeCalendar(data,summary,calendarState),upcoming:homeUpcoming(data,summary),goals:homeGoals(data)};
