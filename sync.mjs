@@ -314,3 +314,15 @@ export async function createMoilyClub(uid,{id,category,name,description,color,ic
  return club;
  });
 }
+
+export async function updateMoilyClub(uid,id,changes){
+ if(auth.currentUser?.uid!==uid||!/^[a-zA-Z0-9_-]+$/.test(id))throw new Error('Invalid account or club');
+ const name=changes.name.trim(),description=changes.description.trim(),{color,icon}=changes;
+ if(!name||name.length>60||description.length>300||!/^#[0-9a-f]{6}$/i.test(color)||!Object.values(moilyClubTemplates).some(t=>t.icon===icon))throw new Error('Invalid club');
+ const ref=doc(db,'accounts',uid,'clubs',id);
+ return runTransaction(db,async tx=>{
+ const snap=await tx.get(ref),old=snap.data();
+ if(auth.currentUser?.uid!==uid||!old||old.deletedAt||old.status!=='active'||old.version!==changes.version)throw new Error('Club changed');
+ tx.update(ref,{name,description,color,icon,version:old.version+1,updatedAt:serverTimestamp()});
+ });
+}
