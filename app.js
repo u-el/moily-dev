@@ -30,12 +30,7 @@ const blank = () => ({
 });
 let records = [];
 let readError = false;
-try {
-  const saved = localStorage.getItem(key);
-  if (saved) records = JSON.parse(saved);
-} catch {
-  readError = true;
-}
+// Account records are loaded only after Firebase authentication. Local records remain available for explicit import.
 
 const localRecords = () => {
   const saved = JSON.parse(localStorage.getItem(key) || '[]');
@@ -2874,11 +2869,7 @@ function changeAccount(user) {
   const status = $('#sync-status');
   records = [];
   if (!user) {
-    try {
-      records = localRecords();
-      readError = false;
-    } catch { readError = true; }
-    status.textContent = '이 브라우저에 저장 중';
+    status.textContent = '로그인이 필요해요.';
     render();
     return;
   }
@@ -2889,7 +2880,7 @@ function changeAccount(user) {
     cloudReady = true;
     showingSavedCopy = Boolean(fromCache) && !navigator.onLine;
     records = incoming.filter(record => record.deleted !== true);
-    status.textContent = (showingSavedCopy ? '오프라인 · 저장해 둔 일정 보는 중: ' : '동기화 중: ') + (user.email || 'Google 계정');
+    status.textContent = (showingSavedCopy ? '오프라인 · 저장해 둔 일정 보는 중: ' : '동기화 중: ') + (user.email || '모일리 계정');
     renderOfflineBanner();
     try {
       const cloudIds = new Set(incoming.map(record => record.id));
@@ -2916,7 +2907,7 @@ async function runAccountAction(action, errorMessage) {
   finally { setSyncBusy(false); }
 }
 
-if ($('#sync-status')) import('./sync.mjs?v=short-share').then(module => {
+if ($('#sync-status')) import('./sync.mjs').then(module => {
   sync = module;
   resolveSync(module);
   updateScheduleShare();
