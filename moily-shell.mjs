@@ -29,7 +29,7 @@ $('layout-calendar').onchange=()=>{if(layoutDraft){layoutDraft.calendarView=$('l
 $('layout-save').onclick=()=>persistLayout();
 $('layout-reset').onclick=()=>{if(confirm('현재 기기 레이아웃만 기본값으로 복원할까요?'))persistLayout(true);};
 let stopHome=()=>{},homeData={},homeTemplates={},calendarState={},clubState={};
-function refreshClubs(){if(uid&&current==='clubs')$('shell-content').replaceChildren(renderClubs(homeData,homeTemplates,clubState,refreshClubs,draft=>themeApi.createMoilyClub(uid,draft)));}
+function refreshClubs(){if(uid&&(current==='clubs'||current?.startsWith('clubs/')))$('shell-content').replaceChildren(renderClubs(homeData,homeTemplates,clubState,refreshClubs,draft=>themeApi.createMoilyClub(uid,draft)));}
 function refreshHome(){if(uid&&current==='home')$('shell-content').replaceChildren(renderHome(homeData,homeTemplates,savedHomeLayout,calendarState));}
 const scrolls=new Map();let current=null,uid=null,generation=0;
 const device=()=>matchMedia('(min-width:1200px)').matches?'desktop':matchMedia('(min-width:768px)').matches?'tablet':'mobile';
@@ -37,14 +37,14 @@ const labels={desktop:'PC',tablet:'태블릿',mobile:'모바일'};
 function applyDevice(){document.body.dataset.device=device();$('shell-device').textContent=labels[device()]+' 레이아웃';if(uid&&themeApi&&layoutDevice!==device())watchLayout(themeApi,uid,generation);}
 for(const q of ['(min-width:768px)','(min-width:1200px)'])matchMedia(q).addEventListener('change',applyDevice);
 applyDevice();
-function route(){const key=location.hash.slice(1);if(Object.hasOwn(routes,key))return key;history.replaceState(history.state,'',location.pathname+location.search+'#home');return 'home';}
-function render(){if(!uid)return;const next=route();if(current===next)return;if(current)scrolls.set(current,window.scrollY);current=next;
-$('shell-title').textContent=routes[next];document.title=routes[next]+' · 모일리';
-$('shell-nav-items').replaceChildren(navigation(Object.entries(routes).map(([key,label])=>({label,active:key===next,href:'#'+key}))));
+function route(){const key=location.hash.slice(1);if(/^clubs\/[a-zA-Z0-9_-]+$/.test(key))return key;if(Object.hasOwn(routes,key))return key;history.replaceState(history.state,'',location.pathname+location.search+'#home');return 'home';}
+function render(){if(!uid)return;const next=route();if(current===next)return;if(current)scrolls.set(current,window.scrollY);current=next;const base=next.startsWith('clubs/')?'clubs':next;clubState.selectedId=base==='clubs'&&next!==base?next.slice(6):null;clubState.detailTab='home';clubState.creating=false;
+$('shell-title').textContent=routes[base];document.title=routes[base]+' · 모일리';
+$('shell-nav-items').replaceChildren(navigation(Object.entries(routes).map(([key,label])=>({label,active:key===base,href:'#'+key}))));
 const panel=document.createElement('section');panel.className='moily-panel';const p=document.createElement('p');p.textContent='이 메뉴의 실제 기능은 이후 개발 단계에서 연결됩니다.';panel.append(p);
 if(next==='calendar'){const a=document.createElement('a');a.href='./';a.textContent='기존 개발용 캘린더 열기';panel.append(a);}
 if(next==='my'){const a=document.createElement('a');a.href='moily-account.html';a.textContent='로그인 계정 연결';panel.append(a);}
-if(next==='home')refreshHome();else if(next==='clubs')refreshClubs();else $('shell-content').replaceChildren(panel);$('shell-main').focus({preventScroll:true});window.scrollTo(0,scrolls.get(next)||0);}
+if(next==='home')refreshHome();else if(base==='clubs')refreshClubs();else $('shell-content').replaceChildren(panel);$('shell-main').focus({preventScroll:true});window.scrollTo(0,scrolls.get(next)||0);}
 if('scrollRestoration' in history)history.scrollRestoration='manual';
 window.addEventListener('hashchange',render);
 document.querySelector('.shell-skip').addEventListener('click',event=>{event.preventDefault();if(uid){$('shell-main').focus();$('shell-main').scrollIntoView({block:'start'});}else{$('shell-status').setAttribute('tabindex','-1');$('shell-status').focus();}});
